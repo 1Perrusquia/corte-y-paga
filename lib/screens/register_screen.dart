@@ -1,58 +1,56 @@
 import 'package:flutter/material.dart';
 import '../../domain/repositories/usuario_repository.dart';
-import 'home_screen.dart'; // Crearemos esta pantalla en el paso 3
-import 'register_screen.dart';
+import '../../data/models/usuario_model.dart';
+import 'login_screen.dart';
 
-class LoginScreen extends StatefulWidget {
-  const LoginScreen({Key? key}) : super(key: key);
+class RegisterScreen extends StatefulWidget {
+  const RegisterScreen({Key? key}) : super(key: key);
 
   @override
-  _LoginScreenState createState() => _LoginScreenState();
+  _RegisterScreenState createState() => _RegisterScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
-  // Controladores para el texto
+class _RegisterScreenState extends State<RegisterScreen> {
+  final _nombreController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-
-  // Llave para el Formulario (para validaciones)
   final _formKey = GlobalKey<FormState>();
-
-  // Instancia de nuestro repositorio
   final _usuarioRepo = UsuarioRepository();
 
-  // Método para manejar el login
-  Future<void> _doLogin() async {
-    // 1. Validar el formulario
+  Future<void> _doRegister() async {
     if (!_formKey.currentState!.validate()) {
-      return; // Si no es válido, no hace nada
+      return;
     }
 
-    // 2. Obtener el texto
-    final email = _emailController.text;
-    final password = _passwordController.text;
+    // 1. Crear el objeto Usuario con los datos
+    final nuevoUsuario = Usuario(
+      nombre: _nombreController.text,
+      email: _emailController.text,
+      password: _passwordController.text, // TODO: En el futuro, esto debe ser un HASH
+    );
 
     try {
-      // 3. Llamar al repositorio
-      final usuario = await _usuarioRepo.login(email, password);
+      // 2. Llamar al repositorio para insertar
+      final id = await _usuarioRepo.registro(nuevoUsuario);
 
-      // 4. Revisar el resultado
-      if (usuario != null) {
-        // ¡Éxito! Navegar a la pantalla Home
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const HomeScreen()),
-        );
-      } else {
-        // Error: Usuario o contraseña incorrectos
+      if (id > 0) {
+        // ¡Éxito!
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Email o contraseña incorrectos.')),
+          SnackBar(content: Text('¡Usuario registrado con éxito! Ya puedes iniciar sesión.')),
+        );
+
+        // 3. Regresar a la pantalla de Login
+        Navigator.pop(context);
+
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error al registrar. ¿El email ya existe?')),
         );
       }
     } catch (e) {
-      // Error general
+      // Error de base de datos (probablemente email duplicado)
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error al iniciar sesión: $e')),
+        SnackBar(content: Text('Error: El email ya está en uso.')),
       );
     }
   }
@@ -61,7 +59,7 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Corte & Paga - Login'),
+        title: Text('Registro de Barbero'),
       ),
       body: Padding(
         padding: const EdgeInsets.all(20.0),
@@ -71,10 +69,27 @@ class _LoginScreenState extends State<LoginScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Text(
-                'Bienvenido',
+                'Crea tu cuenta',
                 style: Theme.of(context).textTheme.headlineMedium,
               ),
               SizedBox(height: 30),
+
+              // --- Campo de Nombre ---
+              TextFormField(
+                controller: _nombreController,
+                decoration: InputDecoration(
+                  labelText: 'Nombre',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.person),
+                ),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Por favor ingresa tu nombre';
+                  }
+                  return null;
+                },
+              ),
+              SizedBox(height: 20),
 
               // --- Campo de Email ---
               TextFormField(
@@ -102,39 +117,24 @@ class _LoginScreenState extends State<LoginScreen> {
                   border: OutlineInputBorder(),
                   prefixIcon: Icon(Icons.lock),
                 ),
-                obscureText: true, // Oculta la contraseña
+                obscureText: true,
                 validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Por favor ingresa tu contraseña';
+                  if (value == null || value.isEmpty || value.length < 6) {
+                    return 'La contraseña debe tener al menos 6 caracteres';
                   }
                   return null;
                 },
               ),
               SizedBox(height: 30),
 
-              // --- Botón de Login ---
+              // --- Botón de Registro ---
               ElevatedButton(
-                onPressed: _doLogin,
+                onPressed: _doRegister,
                 style: ElevatedButton.styleFrom(
-                  minimumSize: Size(double.infinity, 50), // Botón ancho
+                  minimumSize: Size(double.infinity, 50),
                 ),
-                child: Text('Ingresar'),
+                child: Text('Registrarme'),
               ),
-
-              SizedBox(height: 20),
-
-                  // --- Botón de Registro ---
-                  TextButton(
-                    onPressed: () {
-                      // --- MODIFICA AQUÍ ---
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => const RegisterScreen()),
-                      );
-                      // ---------------------
-                    },
-                    child: Text('¿No tienes cuenta? Regístrate aquí'),
-                  )
             ],
           ),
         ),
